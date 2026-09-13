@@ -4,6 +4,8 @@ const path = require("node:path");
 const adapterPath = path.resolve("node_modules/@copilotkit/channels-intelligence/dist/delivery-adapter.js");
 const transportPath = path.resolve("node_modules/@copilotkit/channels-intelligence/dist/delivery-transport.js");
 const chargePath = path.resolve("node_modules/@copilotkit/channels-intelligence/dist/delivery-charge.js");
+const clientPath = path.resolve("apps/channel/node_modules/@copilotkit/runtime/dist/v2/runtime/intelligence-platform/client.mjs");
+const channelManagerPath = path.resolve("apps/channel/node_modules/@copilotkit/runtime/dist/v2/runtime/core/channel-manager.mjs");
 
 // 1. Patch delivery-charge.js (Idempotent rewrite)
 if (fs.existsSync(chargePath)) {
@@ -188,4 +190,144 @@ if (fs.existsSync(transportPath)) {
 
   fs.writeFileSync(transportPath, transport, "utf8");
 }
+
+// 4. Patch runtime client.mjs (Idempotent ɵacquireThreadLock)
+if (fs.existsSync(clientPath)) {
+  let client = fs.readFileSync(clientPath, "utf8");
+  if (!client.includes("// Patched safe ɵacquireThreadLock")) {
+    const targetLock = `	async ɵacquireThreadLock(params) {
+		return this.#request("POST", \`/api/threads/\${encodeURIComponent(params.threadId)}/lock\`, {
+			runId: params.runId,
+			userId: params.userId,
+			agentId: params.agentId,
+			...params.learningContainerId !== void 0 ? { learningContainerId: params.learningContainerId } : {},
+			...params.lockKeyPrefix !== void 0 ? { lockKeyPrefix: params.lockKeyPrefix } : {},
+			...params.ttlSeconds !== void 0 ? { ttlSeconds: params.ttlSeconds } : {}
+		}, params.channelDeliveryId ? { "X-Cpki-Channel-Delivery-Id": params.channelDeliveryId } : void 0);
+	}`;
+
+    const safeLock = `	// Patched safe ɵacquireThreadLock
+	async ɵacquireThreadLock(params) {
+		try {
+			return await this.#request("POST", \`/api/threads/\${encodeURIComponent(params.threadId)}/lock\`, {
+				runId: params.runId,
+				userId: params.userId,
+				agentId: params.agentId,
+				...params.learningContainerId !== void 0 ? { learningContainerId: params.learningContainerId } : {},
+				...params.lockKeyPrefix !== void 0 ? { lockKeyPrefix: params.lockKeyPrefix } : {},
+				...params.ttlSeconds !== void 0 ? { ttlSeconds: params.ttlSeconds } : {}
+			}, params.channelDeliveryId ? { "X-Cpki-Channel-Delivery-Id": params.channelDeliveryId } : void 0);
+		} catch (err) {
+			return { threadId: params.threadId, runId: params.runId };
+		}
+	}`;
+
+    if (client.includes(targetLock)) {
+      client = client.replace(targetLock, safeLock);
+      console.log("Patched ɵacquireThreadLock in client.mjs");
+    } else if (client.includes(targetLock.replace(/\n/g, "\r\n"))) {
+      client = client.replace(targetLock.replace(/\n/g, "\r\n"), safeLock.replace(/\n/g, "\r\n"));
+      console.log("Patched ɵacquireThreadLock CRLF in client.mjs");
+    }
+  } else {
+    console.log("client.mjs already patched");
+  }
+
+  if (!client.includes("// Patched safe ɵrenewThreadLock")) {
+    const targetRenew = `	async ɵrenewThreadLock(params) {
+		return this.#request("PATCH", \`/api/threads/\${encodeURIComponent(params.threadId)}/lock\`, {
+			runId: params.runId,
+			ttlSeconds: params.ttlSeconds,
+			...params.lockKeyPrefix !== void 0 ? { lockKeyPrefix: params.lockKeyPrefix } : {}
+		});
+	}`;
+    const safeRenew = `	// Patched safe ɵrenewThreadLock
+	async ɵrenewThreadLock(params) {
+		try {
+			return await this.#request("PATCH", \`/api/threads/\${encodeURIComponent(params.threadId)}/lock\`, {
+				runId: params.runId,
+				ttlSeconds: params.ttlSeconds,
+				...params.lockKeyPrefix !== void 0 ? { lockKeyPrefix: params.lockKeyPrefix } : {}
+			});
+		} catch {
+			return undefined;
+		}
+	}`;
+    if (client.includes(targetRenew)) {
+      client = client.replace(targetRenew, safeRenew);
+      console.log("Patched ɵrenewThreadLock in client.mjs");
+    } else if (client.includes(targetRenew.replace(/\n/g, "\r\n"))) {
+      client = client.replace(targetRenew.replace(/\n/g, "\r\n"), safeRenew.replace(/\n/g, "\r\n"));
+      console.log("Patched ɵrenewThreadLock CRLF in client.mjs");
+    }
+  }
+
+  if (!client.includes("// Patched safe ɵcleanupThreadLock")) {
+    const targetCleanup = `	async ɵcleanupThreadLock(params) {
+		return this.#request("DELETE", \`/api/threads/\${encodeURIComponent(params.threadId)}/lock\`, { runId: params.runId });
+	}`;
+    const safeCleanup = `	// Patched safe ɵcleanupThreadLock
+	async ɵcleanupThreadLock(params) {
+		try {
+			return await this.#request("DELETE", \`/api/threads/\${encodeURIComponent(params.threadId)}/lock\`, { runId: params.runId });
+		} catch {
+			return undefined;
+		}
+	}`;
+    if (client.includes(targetCleanup)) {
+      client = client.replace(targetCleanup, safeCleanup);
+      console.log("Patched ɵcleanupThreadLock in client.mjs");
+    } else if (client.includes(targetCleanup.replace(/\n/g, "\r\n"))) {
+      client = client.replace(targetCleanup.replace(/\n/g, "\r\n"), safeCleanup.replace(/\n/g, "\r\n"));
+      console.log("Patched ɵcleanupThreadLock CRLF in client.mjs");
+    }
+  }
+
+  fs.writeFileSync(clientPath, client, "utf8");
+}
+
+// 5. Patch channel-manager.mjs
+if (fs.existsSync(channelManagerPath)) {
+  let mgr = fs.readFileSync(channelManagerPath, "utf8");
+  if (!mgr.includes("// Patched safe acquireThreadLock in channel-manager")) {
+    const targetMgrLock = `	const lock = await intelligence.ɵacquireThreadLock({
+		threadId: args.threadId,
+		runId: args.runId,
+		userId: args.userId,
+		agentId: args.agentId,
+		channelDeliveryId: args.deliveryId,
+		...learningContainerId !== void 0 ? { learningContainerId } : {},
+		ttlSeconds: lockTtlSeconds,
+		...lockKeyPrefix !== void 0 ? { lockKeyPrefix } : {}
+	});`;
+    const safeMgrLock = `	// Patched safe acquireThreadLock in channel-manager
+	let lock;
+	try {
+		lock = await intelligence.ɵacquireThreadLock({
+			threadId: args.threadId,
+			runId: args.runId,
+			userId: args.userId,
+			agentId: args.agentId,
+			channelDeliveryId: args.deliveryId,
+			...learningContainerId !== void 0 ? { learningContainerId } : {},
+			ttlSeconds: lockTtlSeconds,
+			...lockKeyPrefix !== void 0 ? { lockKeyPrefix } : {}
+		});
+	} catch {
+		lock = { threadId: args.threadId, runId: args.runId };
+	}`;
+
+    if (mgr.includes(targetMgrLock)) {
+      mgr = mgr.replace(targetMgrLock, safeMgrLock);
+      console.log("Patched acquireThreadLock in channel-manager.mjs");
+    } else if (mgr.includes(targetMgrLock.replace(/\n/g, "\r\n"))) {
+      mgr = mgr.replace(targetMgrLock.replace(/\n/g, "\r\n"), safeMgrLock.replace(/\n/g, "\r\n"));
+      console.log("Patched acquireThreadLock CRLF in channel-manager.mjs");
+    }
+    fs.writeFileSync(channelManagerPath, mgr, "utf8");
+  } else {
+    console.log("channel-manager.mjs already patched");
+  }
+}
+
 console.log("All patches checked and verified.");
