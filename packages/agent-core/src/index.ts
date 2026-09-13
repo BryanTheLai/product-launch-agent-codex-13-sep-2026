@@ -23,4 +23,5 @@ export * from "./creative/providers/exa-research";
 export * from "./creative/providers/fal-video";
 export * from "./creative/deck/presentation";
 export * from "./creative/director";
+export * from "./creative/video-blueprints";
 export * from "./logger";

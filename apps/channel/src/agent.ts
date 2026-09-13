@@ -81,5 +81,5 @@ export class ChannelRunAgent extends AbstractAgent {
 }
 
 export function makeChannelAgent(threadId: string) {
-  return new ChannelRunAgent(makeAgent, threadId);
+  return new ChannelRunAgent((id) => makeAgent(id, { workplace: false }), threadId);
 }

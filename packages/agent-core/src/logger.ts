@@ -7,7 +7,22 @@
  * - Stack Trace Discipline: Full traces on ERROR, concise messages on WARN
  */
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error';
+
+function appendToFile(line: string): void {
+  try {
+    const logFilePath =
+      process.env.LOG_FILE_PATH ||
+      path.resolve(process.cwd(), '.data', 'logs', 'creative.log');
+    fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
+    fs.appendFileSync(logFilePath, line + '\n', 'utf8');
+  } catch {
+    // Ignore logging disk errors to preserve process liveness
+  }
+}
 
 const LEVEL_WEIGHTS: Record<LogLevel, number> = {
   trace: 10,
@@ -157,27 +172,37 @@ export class Logger {
 
   public trace(message: string, context?: LogContext): void {
     if (!this.isLevelEnabled('trace')) return;
-    console.debug(this.formatMessage('trace', message, context));
+    const formatted = this.formatMessage('trace', message, context);
+    console.debug(formatted);
+    appendToFile(formatted);
   }
 
   public debug(message: string, context?: LogContext): void {
     if (!this.isLevelEnabled('debug')) return;
-    console.debug(this.formatMessage('debug', message, context));
+    const formatted = this.formatMessage('debug', message, context);
+    console.debug(formatted);
+    appendToFile(formatted);
   }
 
   public info(message: string, context?: LogContext): void {
     if (!this.isLevelEnabled('info')) return;
-    console.info(this.formatMessage('info', message, context));
+    const formatted = this.formatMessage('info', message, context);
+    console.info(formatted);
+    appendToFile(formatted);
   }
 
   public warn(message: string, context?: LogContext, error?: unknown): void {
     if (!this.isLevelEnabled('warn')) return;
-    console.warn(this.formatMessage('warn', message, context, error));
+    const formatted = this.formatMessage('warn', message, context, error);
+    console.warn(formatted);
+    appendToFile(formatted);
   }
 
   public error(message: string, error?: unknown, context?: LogContext): void {
     if (!this.isLevelEnabled('error')) return;
-    console.error(this.formatMessage('error', message, context, error));
+    const formatted = this.formatMessage('error', message, context, error);
+    console.error(formatted);
+    appendToFile(formatted);
   }
 
   /**

@@ -15,6 +15,7 @@ import {
   executeRevision,
   loadThreadState,
   logger,
+  VIDEO_BLUEPRINTS,
   type CreativeBriefInput,
   type FormFactor,
   type ProductType,
@@ -234,6 +235,27 @@ export const reviseCreativeArtifactTool = defineChannelTool({
       }
       throw err;
     }
+  },
+});
+
+export const listVideoBlueprintsTool = defineChannelTool({
+  name: 'list_video_blueprints',
+  description:
+    'List all available DTC video production blueprints, their formats, hooks, value propositions, and reference video assets.',
+  parameters: z.object({}),
+  async handler() {
+    const list = Object.values(VIDEO_BLUEPRINTS).map((bp) => ({
+      id: bp.id,
+      title: bp.title,
+      format: bp.format,
+      referenceVideo: bp.referenceVideoFilename,
+      hook: bp.hook.title,
+      valueProp: bp.valueProp,
+    }));
+    return {
+      totalBlueprints: list.length,
+      blueprints: list,
+    };
   },
 });
 

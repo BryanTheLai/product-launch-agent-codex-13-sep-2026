@@ -1,27 +1,29 @@
 import {
-  Context,
   createChannel,
-  Header,
-  Markdown,
-  Message,
-  Section,
   type ChannelMessage,
   type StatefulThread,
+  Message,
+  Header,
+  Section,
+  Markdown,
 } from "@copilotkit/channels";
-import { isSearchConfigured, isWorkplaceConfigured, WORKPLACE_CONTEXT } from "agent-core";
+import { isSearchConfigured } from "agent-core";
 import { makeChannelAgent } from "./agent";
 import { required } from "./env";
-import { CreativeProgress, IncidentCard, Timeline, welcomeMessage } from "./components";
-import { proposeAction, readThread, searchTheWeb } from "./tools";
-import { runCreativeWorkflowTool, reviseCreativeArtifactTool } from "./creative-tools";
+import { CreativeProgress, welcomeMessage } from "./components";
+import { searchTheWeb } from "./tools";
+import {
+  runCreativeWorkflowTool,
+  reviseCreativeArtifactTool,
+  listVideoBlueprintsTool,
+} from "./creative-tools";
 
 // Tools are registered only when their credential is present, so the agent is
 // never handed a tool that will fail when it calls it.
 const tools = [
   runCreativeWorkflowTool,
   reviseCreativeArtifactTool,
-  readThread,
-  proposeAction,
+  listVideoBlueprintsTool,
   ...(isSearchConfigured() ? [searchTheWeb] : []),
 ];
 
@@ -38,7 +40,7 @@ export const channel = createChannel({
 
   agent: makeChannelAgent,
   tools,
-  components: [IncidentCard, Timeline, CreativeProgress],
+  components: [CreativeProgress],
   showToolStatus: true,
   store: { concurrency: "serial" },
 
@@ -47,16 +49,18 @@ export const channel = createChannel({
     {
       description: "Launch Room Creative Agent",
       value:
-        "You are the Launch Room CreativeAgent. When presented with a product launch request or ugly product photo, invoke 'run_creative_workflow' to generate the locked ProductIdentitySpec, product master, asset pack, A/B/C posters, Exa market & unit economics research, Kling video, and editable PPTX & PDF pitch deck. When presented with a revision (e.g. 'Make Poster B more retro' or supplier quote updates), invoke 'revise_creative_artifact' without restarting research.",
+        "You are the Launch Room CreativeAgent operator. When presented with a product launch request or ugly product photo, invoke 'run_creative_workflow'. When presented with an in-thread revision, invoke 'revise_creative_artifact'. When asked about blueprints, reference assets, templates, or capabilities, answer directly and concisely. You can also call 'list_video_blueprints'.",
+    },
+    {
+      description: "Available DTC Video Production Blueprints",
+      value:
+        "The catalog includes 7 blueprints: 1) egg-coverage-test (Coverage Test: Eggshell Side-by-Side Comparison), 2) underwater-bubble-hydration (Underwater Bubble Hydration Explosion), 3) seasonal-tap-swap (Seasonal Rhythmic Tap-and-Swap Transition), 4) sun-stick-dual-finish (Dual-Finish Split Face & Arm Swatch), 5) asmr-beauty-recipe (ASMR Korean Bingsu Dessert Beauty Recipe), 6) problem-solution-invisible-swatch (Problem-Solution Invisible Finish Swatch), 7) skin-1004-soothing-dispense (Centella Soothing Ampoule Macro Dropper Dispense). Reference video files live in reference-artifacts/.",
     },
     {
       description: "Rendering",
       value:
         "You can draw native UI by calling creative_progress for short lifecycle updates. Prefer native cards over long prose when the answer has structure.",
     },
-    ...(isWorkplaceConfigured()
-      ? [{ description: "Workplace", value: WORKPLACE_CONTEXT }]
-      : []),
     {
       description: "Surface",
       value:
@@ -75,17 +79,23 @@ async function runCreativeTurn(thread: StatefulThread<unknown>, message: Channel
       ]
     : message.text;
 
-  await thread.post(
-    <Message accent="#2B1B17">
-      <Header>👀 Creative Studio is on it</Header>
-      <Section>
-        <Markdown>Reading the brief and attachments, locking product identity, and generating the complete launch pack.</Markdown>
-      </Section>
-      <Context>Routine creative work continues autonomously.</Context>
-    </Message>,
-  );
-
-  await thread.runAgent({ prompt });
+  try {
+    await thread.runAgent({ prompt });
+  } catch (err) {
+    console.error("Error running creative turn in channel:", err);
+    try {
+      await thread.post(
+        <Message accent="#E53E3E">
+          <Header>⚠️ Request Notice</Header>
+          <Section>
+            <Markdown>{`Sorry, I encountered an issue processing your request: ${err instanceof Error ? err.message : String(err)}`}</Markdown>
+          </Section>
+        </Message>
+      );
+    } catch {
+      // ignore notification failure
+    }
+  }
 }
 
 channel.onMention(async ({ thread, message }) => {
@@ -104,3 +114,4 @@ channel.onMessage(async ({ thread, message }) => {
 channel.onWelcome(async ({ thread, platform }) => {
   await thread.post(welcomeMessage(platform));
 });
+

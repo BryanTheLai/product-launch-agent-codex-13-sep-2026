@@ -9,6 +9,7 @@ import {
 } from "./testing/managed-gateway";
 import { z } from "zod";
 import { proposeAction, readThread } from "./tools";
+import { listVideoBlueprintsTool } from "./creative-tools";
 
 /** Only the methods these tools call; the rest of Thread is irrelevant here. */
 const stubContext = (thread: Record<string, unknown>) =>
@@ -215,4 +216,19 @@ describe("propose_action", () => {
       },
     );
   }
+});
+
+describe("list_video_blueprints", () => {
+  it("returns all 7 canonical DTC video blueprints with reference assets", async () => {
+    const result = await (listVideoBlueprintsTool.handler as any)({}, stubContext({}));
+    assert.equal(result.totalBlueprints, 7);
+    const ids = result.blueprints.map((b: any) => b.id);
+    assert.ok(ids.includes("egg-coverage-test"));
+    assert.ok(ids.includes("underwater-bubble-hydration"));
+    assert.ok(ids.includes("seasonal-tap-swap"));
+    assert.ok(ids.includes("sun-stick-dual-finish"));
+    assert.ok(ids.includes("asmr-beauty-recipe"));
+    assert.ok(ids.includes("problem-solution-invisible-swatch"));
+    assert.ok(ids.includes("skin-1004-soothing-dispense"));
+  });
 });
