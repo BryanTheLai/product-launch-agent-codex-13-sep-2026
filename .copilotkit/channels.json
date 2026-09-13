@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "channels": [
+    {
+      "name": "launch-2027",
+      "displayName": "launch-2027",
+      "providers": {
+        "slack": {
+          "env": {
+            "botToken": "INTELLIGENCE_CHANNEL_LAUNCH_2027_SLACK_BOT_TOKEN",
+            "signingSecret": "INTELLIGENCE_CHANNEL_LAUNCH_2027_SLACK_SIGNING_SECRET"
+          }
+        }
+      }
+    }
+  ]
+}

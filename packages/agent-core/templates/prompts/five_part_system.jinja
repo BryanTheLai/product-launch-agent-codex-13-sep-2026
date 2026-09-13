@@ -1,0 +1,29 @@
+PRODUCT SPECIFICATION (IMMUTABLE PHYSICAL IDENTITY):
+- Product Type: {{ productSpec.productType }}
+- Form Factor: {{ productSpec.formFactor }}
+- Silhouette & Proportions: {{ productSpec.silhouetteAndProportions }}
+- Volume & Dimensions: {{ productSpec.dimensionsAndNetVolume }}
+- Cap / Closure / Dispenser: {{ productSpec.capClosureOrDispenser }}
+- Container Material & Finish: {{ productSpec.containerMaterialAndFinish }}
+- Body & Formula Color: {{ productSpec.bodyColorAndFormulaColor }}
+- Label Layout & Typography: {{ productSpec.labelLayoutAndApprovedCopy }}
+- Logo Treatment: {{ productSpec.logoTreatment }}
+- Formula Viscosity & Texture: {{ productSpec.textureAndViscosity }}
+
+CREATIVE TREATMENT:
+{{ creativeTreatment }}
+
+SHOT PLAN & COMPOSITION:
+{{ shotPlan }}
+
+NEGATIVE CONSTRAINTS (STRICTLY FORBIDDEN):
+- DO NOT alter container silhouette, cap, closure, or volume.
+- DO NOT change product materials, finish, or color grade.
+- DO NOT invent unapproved brand logos, symbols, or watermarks.
+- DO NOT produce floating liquid, ungrounded gel, or impossible fluid dynamics.
+- NO blurry text, distorted labels, or illegible typography.
+{% for c in productSpec.forbiddenProductChanges %}- {{ c }}
+{% endfor %}{% if negativeConstraints %}- {{ negativeConstraints }}
+{% endif %}
+CLAIMS POLICY:
+{{ claimsPolicy | default('Use only descriptive aesthetic copy. Do not invent medical claims, unverified SPF numbers, or unauthorized clinical efficacy statements.') }}
