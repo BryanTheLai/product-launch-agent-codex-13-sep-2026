@@ -701,24 +701,40 @@ export const VIDEO_BLUEPRINTS: Record<BlueprintId, VideoProductionBlueprint> = {
       {
         timeRange: '0:00 - 0:02',
         durationSec: 2.0,
-        title: 'Precision Droplet Dispense',
-        action: 'Extreme macro nozzle shot as honey-gold teardrop droplet dispenses onto index fingertip.',
-        cameraAngle: 'Extreme macro close-up (100mm)',
-        overlayText: 'struggling with irritated skin? try this!',
+        title: 'Extreme Macro Nozzle Extrusion',
+        action: 'Extreme macro close-up on nozzle as formula beads smoothly onto index fingertip with sharp epidermal ridges.',
+        cameraAngle: 'Extreme macro close-up (100mm T2.8)',
+        overlayText: 'Barrier Hydration Formula 💧',
       },
       {
         timeRange: '0:02 - 0:05',
         durationSec: 3.0,
-        title: 'Calming Melt & Soothe',
-        action: 'Fingertip gently taps skin; droplet breaks into watery barrier comfort and calms redness immediately.',
-        cameraAngle: '45° macro tracking finger tap',
-        overlayText: 'Instant barrier calm 🌿',
+        title: 'Hero Packaging Display & Sun Flare',
+        action: 'Clean human hand rotates matte tube into raking 3200K sunlight, skimming packaging with subtle warm flare.',
+        cameraAngle: 'Medium macro handheld angle with natural bokeh',
+        overlayText: 'Pure Daily Recovery',
+      },
+      {
+        timeRange: '0:05 - 0:07',
+        durationSec: 2.0,
+        title: 'Rack Focus Typography Detail',
+        action: 'Razor-thin depth of field racks focus along tube body, displaying sharp typography and tactile matte texture.',
+        cameraAngle: 'Low-angle macro tilt',
+        overlayText: 'Clinical Precision',
+      },
+      {
+        timeRange: '0:07 - 0:10',
+        durationSec: 3.0,
+        title: 'Back-of-Hand Smooth Shearing',
+        action: 'Index finger smoothly shears droplet across skin, melting into a glistening, hydrating, non-sticky dewy sheen.',
+        cameraAngle: '45° top-down macro on skin contact',
+        overlayText: 'Instant Barrier Calm 🌿',
       },
     ],
     buildKlingPrompt: (productSpec, brandName) =>
       renderTemplate('video/skin_1004_soothing_dispense.jinja', { productSpec, brandName }),
     buildUGCSpec: (productSpec, brandName) => {
-      const brand = brandName || 'Target';
+      const brand = brandName || 'Stackifier';
       return {
         durationMode: 'five_second_single_clip',
         aspectRatio: '9:16',
@@ -727,28 +743,48 @@ export const VIDEO_BLUEPRINTS: Record<BlueprintId, VideoProductionBlueprint> = {
         productIdentityVersion: productSpec.productIdentityVersion,
         shots: [
           {
-            duration: 2.5,
+            duration: 2.0,
             framing: 'Extreme macro 100mm close-up on precision tube nozzle',
-            action: `Tube gently compresses; translucent droplet of ${brand} ${productSpec.productType} beads onto fingertip`,
-            cameraMotion: 'Micro-push into droplet refraction',
+            action: `Tube gently compresses; translucent bead of ${brand} ${productSpec.productType} beads onto fingertip`,
+            cameraMotion: 'Micro-push into droplet caustic refraction',
             texturePhysics: 'High-clarity viscous droplet with smooth surface tension',
-            lighting: 'Warm 4500K golden backlight',
+            lighting: 'Raking 3200K golden sunlight',
             overlayCopy: 'struggling with irritated skin? try this! 💧',
-            transition: 'Direct cut to skin tap',
+            transition: 'Hard cut to hero packaging reveal',
           },
           {
-            duration: 2.5,
-            framing: 'Macro 45° on skin calming melt',
-            action: `Fingertip taps formula into skin, melting instantly into a refreshing cooling moisture layer`,
-            cameraMotion: 'Subtle tilt up to rested container',
-            texturePhysics: 'Non-sticky rapid skin absorption',
-            lighting: 'Diffused soothing daylight',
+            duration: 3.0,
+            framing: 'Medium macro handheld shot of hero container',
+            action: `Clean hand rotates ${brand} matte container slightly into direct light with subtle sunbeam flare`,
+            cameraMotion: 'Subtle handheld micro-drift',
+            texturePhysics: 'Tactile matte finish with sharp typography',
+            lighting: 'Direct golden sunlight with lavender bounce fill',
+            overlayCopy: 'Locked formulation purity',
+            transition: 'Hard cut to rack focus detail',
+          },
+          {
+            duration: 2.0,
+            framing: 'Low-angle macro tilt along cylindrical body',
+            action: 'Razor-thin depth of field racks focus down through embossed brand typography',
+            cameraMotion: 'Smooth vertical rack focus',
+            texturePhysics: 'Tactile paper and polymer texture under raking light',
+            lighting: 'Directional 35° raking beam',
+            overlayCopy: 'Clinical barrier performance',
+            transition: 'Hard cut to back-of-hand application',
+          },
+          {
+            duration: 3.0,
+            framing: 'Top-down 45° macro on back of hand',
+            action: `Index finger executes two deliberate circular passes, shearing formula into a glistening hydrated sheen`,
+            cameraMotion: 'Subtle tilt following fingertip shear',
+            texturePhysics: 'Instant aqueous melt, zero synthetic float or sticky residue',
+            lighting: 'Warm diffused morning daylight',
             overlayCopy: 'Instant barrier calm 🌿',
             transition: 'Fade to brand lockup',
           },
         ],
         claimsPolicy: 'Descriptive cosmetic soothing and barrier hydration only.',
-        negativeConstraints: 'No chemical burn visuals, no exaggerated CGI cartoon skin textures.',
+        negativeConstraints: 'No chemical burn visuals, no exaggerated CGI cartoon skin textures, no detached floating droplets.',
       };
     },
   },
@@ -789,7 +825,7 @@ export function selectVideoBlueprint(
     return VIDEO_BLUEPRINTS['asmr-beauty-recipe'];
   }
 
-  if (query.includes('soothing') || query.includes('cica') || query.includes('centella') || query.includes('irritat') || query.includes('skin 1004') || query.includes('skin1004')) {
+  if (query.includes('barrier') || query.includes('soothing') || query.includes('cica') || query.includes('centella') || query.includes('irritat') || query.includes('skin 1004') || query.includes('skin1004') || query.includes('dispense')) {
     return VIDEO_BLUEPRINTS['skin-1004-soothing-dispense'];
   }
 
@@ -797,16 +833,16 @@ export function selectVideoBlueprint(
     return VIDEO_BLUEPRINTS['problem-solution-invisible-swatch'];
   }
 
-  // Domain heuristic defaults based on product type:
+  // Domain heuristic defaults based on product type and form factor:
+  if (productSpec.formFactor === 'tube' || productSpec.productType === 'moisturizer' || productSpec.productType === 'serum' || productSpec.productType === 'toner' || productSpec.productType === 'lotion') {
+    return VIDEO_BLUEPRINTS['skin-1004-soothing-dispense'];
+  }
   if (productSpec.productType === 'sunscreen') {
     return VIDEO_BLUEPRINTS['problem-solution-invisible-swatch'];
-  }
-  if (productSpec.productType === 'serum' || productSpec.productType === 'toner') {
-    return VIDEO_BLUEPRINTS['skin-1004-soothing-dispense'];
   }
   if (productSpec.formFactor === 'jar') {
     return VIDEO_BLUEPRINTS['asmr-beauty-recipe'];
   }
 
-  return VIDEO_BLUEPRINTS['problem-solution-invisible-swatch'];
+  return VIDEO_BLUEPRINTS['skin-1004-soothing-dispense'];
 }

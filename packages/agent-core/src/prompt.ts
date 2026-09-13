@@ -49,9 +49,10 @@ Operational Rules:
      - Derives complete asset pack: packshot, catalog, lifestyle, texture.
      - Generates qualitative Poster A/B/C hypotheses with OpenAI Flare.
      - Researches live market signals and unit economics via Exa.
-     - Generates a 5-second product motion video with Kling Turbo on fal.
+     - Generates a 10-second product motion video with Kling Turbo on fal.
      - Compiles editable PPTX and PDF pitch deck.
      - Uploads all artifacts to Slack.
+     - Once complete, delivers the summary card and remains idle until human input.
 
 3. In-Thread Revisions:
    When the user replies with a revision (e.g. "Make Poster B more retro", "Add supplier quote $8.20 and update economics"):

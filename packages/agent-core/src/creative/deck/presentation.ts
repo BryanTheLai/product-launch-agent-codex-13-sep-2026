@@ -23,10 +23,11 @@ export interface BuildDeckOptions {
   economics: EconomicsResearch;
   ugcSpec?: UGCSpec;
   videoArtifact?: Artifact;
+  theme?: 'im8_crimson' | 'warm_earth';
 }
 
 export function buildDeckSpec(options: BuildDeckOptions): DeckSpec {
-  const { brandName, productSpec, assetPack, posterVariants, recommendedVariantId, signals, economics, ugcSpec } = options;
+  const { brandName, productSpec, assetPack, posterVariants, recommendedVariantId, signals, economics, ugcSpec, theme } = options;
 
   const slides: DeckSlide[] = [
     // Slide 1: Executive Concept
@@ -112,13 +113,15 @@ export function buildDeckSpec(options: BuildDeckOptions): DeckSpec {
       slideNumber: 6,
       type: 'video',
       title: 'LAUNCH VIDEO & UGC MOTION',
-      subtitle: '5-Second Kling Turbo Vertical Hook Designed for Creator & Paid Social Channels',
+      subtitle: '10-Second Kling Turbo Vertical Hook Designed for Creator & Paid Social Channels',
       content: {
         recommendedPosterPath: assetPack[`poster_${recommendedVariantId}`]?.localPath || assetPack['product_master']?.localPath,
         ugcSpec: ugcSpec || {
           shots: [
-            { framing: 'Macro dispensing', action: 'Velvety cream application', duration: 2.0 },
-            { framing: 'Handheld reveal', action: 'Catching warm sunlight', duration: 3.0 },
+            { framing: 'Macro nozzle extrusion', action: 'Gentle pressure beads translucent formula onto fingertip', duration: 2.0 },
+            { framing: 'Hero product reveal', action: 'Minimalist container catches warm raking sunlight', duration: 3.0 },
+            { framing: 'Rack focus detail', action: 'Razor-thin depth of field along embossed typography', duration: 2.0 },
+            { framing: 'Back-of-hand skin shearing', action: 'Smooth glide transforming into glistening dewy sheen', duration: 3.0 },
           ],
         },
         videoStatus: options.videoArtifact?.status || 'completed',
@@ -153,6 +156,7 @@ export function buildDeckSpec(options: BuildDeckOptions): DeckSpec {
     brandName,
     productType: productSpec.productType,
     productIdentityVersion: productSpec.productIdentityVersion,
+    theme: theme || 'warm_earth',
     slides,
   };
 }
@@ -165,13 +169,15 @@ export async function exportDeckToPptx(
   const pres = new pptxgen();
   pres.layout = 'LAYOUT_16x9';
 
-  // Palette inspired by Brown and White Modern Skincare Presentation
-  const cDark = '2B1B17'; // Rich warm brown
-  const cCream = 'F9F6F0'; // Off-white cream
-  const cSand = 'D4A373'; // Sand accent
-  const cMuted = '8D5B4C'; // Terracotta muted
+  // Palette: iM8 Crimson or Modern Skincare Earth Tones
+  const isCrimson = deckSpec.theme === 'im8_crimson';
+  const cDark = isCrimson ? '141414' : '2B1B17'; // Obsidian charcoal vs Rich warm brown
+  const cCream = isCrimson ? 'FAF7F2' : 'F9F6F0'; // Warm bone cream vs Off-white cream
+  const cSand = isCrimson ? 'C23B38' : 'D4A373'; // iM8 Crimson accent vs Sand accent
+  const cMuted = isCrimson ? '8B1E24' : '8D5B4C'; // Deep burgundy vs Terracotta muted
   const cWhite = 'FFFFFF';
-  const cCardBg = '3A2823'; // Dark card background
+  const cCardBg = isCrimson ? '221516' : '3A2823'; // Dark crimson tint card vs Dark brown card
+  const cRule = isCrimson ? '4A1C20' : '4A352F';
 
   for (const slideData of deckSpec.slides) {
     const slide = pres.addSlide();
@@ -210,7 +216,7 @@ export async function exportDeckToPptx(
       y: 0.68,
       w: 8.8,
       h: 0,
-      line: { color: '4A352F', width: 1 },
+      line: { color: cRule, width: 1 },
     });
 
     // Slide Subtitle / Header
@@ -640,7 +646,7 @@ export async function exportDeckToPptx(
         rectRadius: 0.1,
       });
 
-      slide.addText('5-SECOND KLING TURBO MOTION BLUEPRINT', {
+      slide.addText('10-SECOND KLING TURBO MOTION BLUEPRINT', {
         x: 3.9,
         y: 1.45,
         w: 5.3,
@@ -747,6 +753,50 @@ export async function exportDeckToPptx(
   return outputPath;
 }
 
+function drawWrappedText(
+  page: any,
+  text: string,
+  options: {
+    x: number;
+    y: number;
+    maxWidth: number;
+    fontSize: number;
+    font: any;
+    color: any;
+    lineHeight?: number;
+    maxLines?: number;
+  }
+): number {
+  const { x, maxWidth, fontSize, font, color, lineHeight = fontSize * 1.35, maxLines = 10 } = options;
+  let y = options.y;
+  const words = (text || '').split(/\s+/).filter(Boolean);
+  let currentLine = '';
+  let linesDrawn = 0;
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+    if (testWidth > maxWidth && currentLine) {
+      page.drawText(currentLine, { x, y, size: fontSize, font, color });
+      linesDrawn++;
+      y -= lineHeight;
+      if (linesDrawn >= maxLines) {
+        return y;
+      }
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+
+  if (currentLine && linesDrawn < maxLines) {
+    page.drawText(currentLine, { x, y, size: fontSize, font, color });
+    y -= lineHeight;
+  }
+
+  return y;
+}
+
 export async function exportDeckToPdf(
   deckSpec: DeckSpec,
   outputPath: string,
@@ -760,11 +810,13 @@ export async function exportDeckToPdf(
   const W = 960;
   const H = 540;
 
-  const rgbDark = rgb(0.168, 0.106, 0.09); // #2B1B17
-  const rgbCream = rgb(0.976, 0.965, 0.941); // #F9F6F0
-  const rgbSand = rgb(0.831, 0.639, 0.451); // #D4A373
-  const rgbCard = rgb(0.227, 0.157, 0.137); // #3A2823
-  const rgbRule = rgb(0.290, 0.208, 0.184); // #4A352F
+  const isCrimson = deckSpec.theme === 'im8_crimson';
+  const rgbDark = isCrimson ? rgb(0.08, 0.08, 0.08) : rgb(0.168, 0.106, 0.09); // #141414 vs #2B1B17
+  const rgbCream = isCrimson ? rgb(0.98, 0.968, 0.949) : rgb(0.976, 0.965, 0.941); // #FAF7F2 vs #F9F6F0
+  const rgbSand = isCrimson ? rgb(0.76, 0.23, 0.22) : rgb(0.831, 0.639, 0.451); // #C23B38 vs #D4A373
+  const rgbCard = isCrimson ? rgb(0.133, 0.082, 0.086) : rgb(0.227, 0.157, 0.137); // #221516 vs #3A2823
+  const rgbRule = isCrimson ? rgb(0.29, 0.11, 0.13) : rgb(0.290, 0.208, 0.184); // #4A1C20 vs #4A352F
+  const rgbCardHighlight = isCrimson ? rgb(0.35, 0.12, 0.14) : rgb(0.35, 0.25, 0.20);
 
   for (const slideData of deckSpec.slides) {
     const page = pdfDoc.addPage([W, H]);
@@ -826,38 +878,44 @@ export async function exportDeckToPdf(
         color: rgbCream,
       });
 
-      // Description
-      page.drawText((c.description || '').substring(0, 160), {
+      // Description (wrapped)
+      drawWrappedText(page, c.description || '', {
         x: 50,
-        y: H - 145,
-        size: 11,
+        y: H - 140,
+        maxWidth: 480,
+        fontSize: 11,
         font: fontRegular,
         color: rgbCream,
+        lineHeight: 16,
+        maxLines: 4,
       });
 
       // Decision Card
       page.drawRectangle({
         x: 50,
-        y: 80,
+        y: 65,
         width: 480,
-        height: 160,
+        height: 175,
         color: rgbCard,
       });
 
       page.drawText('EXECUTIVE DECISION REQUESTED', {
         x: 70,
-        y: 210,
-        size: 12,
+        y: 212,
+        size: 11,
         font: fontBold,
         color: rgbSand,
       });
 
-      page.drawText((c.bossDecision || '').substring(0, 180), {
+      drawWrappedText(page, c.bossDecision || '', {
         x: 70,
-        y: 170,
-        size: 11,
+        y: 188,
+        maxWidth: 440,
+        fontSize: 10.5,
         font: fontRegular,
         color: rgbCream,
+        lineHeight: 15,
+        maxLines: 7,
       });
 
       // Embed image if present
@@ -927,37 +985,43 @@ export async function exportDeckToPdf(
       const sigs: CommercialSignal[] = c.signals || [];
 
       sigs.forEach((s, idx) => {
-        const yBase = H - 110 - idx * 120;
+        const yBase = H - 110 - idx * 125;
         page.drawRectangle({
           x: 50,
-          y: yBase - 90,
+          y: yBase - 105,
           width: W - 100,
-          height: 100,
+          height: 115,
           color: rgbCard,
         });
 
         page.drawText(s.signal, {
           x: 70,
-          y: yBase - 20,
+          y: yBase - 22,
           size: 12,
           font: fontBold,
           color: rgbSand,
         });
 
-        page.drawText(`Evidence: ${(s.evidence || '').substring(0, 130)}`, {
+        drawWrappedText(page, `Evidence: ${s.evidence || ''}`, {
           x: 70,
           y: yBase - 42,
-          size: 10,
+          maxWidth: W - 140,
+          fontSize: 10,
           font: fontRegular,
           color: rgbCream,
+          lineHeight: 14,
+          maxLines: 2,
         });
 
-        page.drawText(`Source: ${s.sourceUrl} | Implication: ${(s.commercialImplication || '').substring(0, 110)}`, {
+        drawWrappedText(page, `Source: ${s.sourceUrl} | Implication: ${s.commercialImplication || ''}`, {
           x: 70,
-          y: yBase - 64,
-          size: 9.5,
+          y: yBase - 74,
+          maxWidth: W - 140,
+          fontSize: 9.5,
           font: fontRegular,
           color: rgbSand,
+          lineHeight: 13,
+          maxLines: 2,
         });
       });
     } else if (slideData.type === 'posters') {
@@ -972,7 +1036,7 @@ export async function exportDeckToPdf(
           y: 60,
           width: 270,
           height: 400,
-          color: v.isRecommended ? rgb(0.35, 0.25, 0.20) : rgbCard,
+          color: v.isRecommended ? rgbCardHighlight : rgbCard,
         });
 
         page.drawText(`POSTER ${v.variantId}: ${v.conceptName}`, {
@@ -993,20 +1057,26 @@ export async function exportDeckToPdf(
           }
         }
 
-        page.drawText(`Hypothesis: ${(v.hypothesis || '').substring(0, 60)}`, {
+        drawWrappedText(page, `Hypothesis: ${v.hypothesis || ''}`, {
           x: xPos + 15,
-          y: 155,
-          size: 9.5,
+          y: 165,
+          maxWidth: 240,
+          fontSize: 9.5,
           font: fontRegular,
           color: rgbCream,
+          lineHeight: 13,
+          maxLines: 3,
         });
 
-        page.drawText(`Audience: ${(v.audience || '').substring(0, 60)}`, {
+        drawWrappedText(page, `Audience: ${v.audience || ''}`, {
           x: xPos + 15,
-          y: 130,
-          size: 9.5,
+          y: 115,
+          maxWidth: 240,
+          fontSize: 9,
           font: fontRegular,
           color: rgbSand,
+          lineHeight: 12,
+          maxLines: 2,
         });
       }
     } else if (slideData.type === 'economics') {
@@ -1119,7 +1189,7 @@ export async function exportDeckToPdf(
         color: rgbCard,
       });
 
-      page.drawText('5-SECOND KLING TURBO MOTION BLUEPRINT', {
+      page.drawText('10-SECOND KLING TURBO MOTION BLUEPRINT', {
         x: 385,
         y: 430,
         size: 13,
@@ -1129,19 +1199,23 @@ export async function exportDeckToPdf(
 
       const shotList = c.ugcSpec?.shots || [];
       shotList.forEach((s: any, idx: number) => {
+        const yTop = 390 - idx * 80;
         page.drawText(`Shot ${idx + 1} (${s.duration}s): ${s.framing}`, {
           x: 385,
-          y: 380 - idx * 80,
-          size: 11,
+          y: yTop,
+          size: 10.5,
           font: fontBold,
           color: rgbCream,
         });
-        page.drawText(`Action: ${(s.action || '').substring(0, 80)}`, {
+        drawWrappedText(page, `Action: ${s.action || ''}. Lighting: ${s.lighting || 'Raking 3200K natural sunlight'}.`, {
           x: 385,
-          y: 360 - idx * 80,
-          size: 10,
+          y: yTop - 18,
+          maxWidth: 500,
+          fontSize: 9.5,
           font: fontRegular,
           color: rgbCream,
+          lineHeight: 13,
+          maxLines: 3,
         });
       });
     } else if (slideData.type === 'recommendation') {
@@ -1164,18 +1238,21 @@ export async function exportDeckToPdf(
 
         page.drawText(cd.title, {
           x: xPos + 15,
-          y: 410,
-          size: 12,
+          y: 415,
+          size: 11.5,
           font: fontBold,
           color: rgbSand,
         });
 
-        page.drawText((cd.desc || '').substring(0, 150), {
+        drawWrappedText(page, cd.desc || '', {
           x: xPos + 15,
-          y: 360,
-          size: 10.5,
+          y: 380,
+          maxWidth: 240,
+          fontSize: 10,
           font: fontRegular,
           color: rgbCream,
+          lineHeight: 15,
+          maxLines: 12,
         });
       });
     }

@@ -10,7 +10,7 @@ export interface GenerateVideoOptions {
   threadId: string;
   sourcePosterArtifact: Artifact;
   productSpec: ProductIdentitySpec;
-  durationMode?: 'five_second_single_clip' | 'fourteen_second_multi_clip';
+  durationMode?: 'five_second_single_clip' | 'ten_second_single_clip' | 'fourteen_second_multi_clip' | '10' | '5';
   blueprintId?: BlueprintId | string;
   briefText?: string;
   brandName?: string;
@@ -88,9 +88,10 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
     }
 
     const endpoint = 'https://queue.fal.run/fal-ai/kling-video/v3/turbo/standard/image-to-video';
+    const videoDuration = options.durationMode === 'five_second_single_clip' || options.durationMode === '5' ? '5' : '10';
     log.info(`Submitting Kling video generation to fal (${blueprint.title})`, {
       aspectRatio: '9:16',
-      duration: '5s',
+      duration: `${videoDuration}s`,
       hasInputImage: Boolean(imageUrl),
     });
 
@@ -103,7 +104,7 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
       body: JSON.stringify({
         prompt,
         image_url: imageUrl,
-        duration: '5',
+        duration: videoDuration,
         aspect_ratio: '9:16',
       }),
     });
@@ -145,9 +146,9 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
       requestId: queueData.request_id,
     });
 
-    // Poll until completed or timeout
+    // Poll until completed or timeout (up to 50 iterations * 3s = 150s for 10s video)
     let videoUrl = '';
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 50; i++) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       const pollRes = await fetch(statusUrl, {
         headers: { Authorization: `Key ${falKey}` },

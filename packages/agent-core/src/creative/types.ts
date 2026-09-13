@@ -155,6 +155,7 @@ export interface DeckSpec {
   brandName: string;
   productType: string;
   productIdentityVersion: string;
+  theme?: 'im8_crimson' | 'warm_earth';
   slides: DeckSlide[];
 }
 

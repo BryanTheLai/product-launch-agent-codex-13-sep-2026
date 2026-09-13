@@ -77,26 +77,34 @@ export async function executeCreativeRun(
       material: productSpec.containerMaterialAndFinish,
     });
 
+    const isIm8 =
+      Boolean(input.referenceUrl?.toLowerCase().includes('im8')) ||
+      Boolean(input.rawText?.toLowerCase().includes('im8')) ||
+      Boolean(input.brandName?.toLowerCase().includes('im8')) ||
+      Boolean(input.rawText?.toLowerCase().includes('red'));
+
     const brandContext: BrandContext = {
       brandName: input.brandName || 'Stackifier',
       logoAsset: 'provisional',
       watermarkAsset: 'none',
-    referenceUrls: input.referenceUrl ? [input.referenceUrl] : ['https://im8health.com/'],
-    paletteAndTypographyCues: 'Warm tactile earth tones (#2B1B17, #F9F6F0, #D4A373), high-contrast bold sans-serif headlines, clinical precision layout',
-    toneOfVoice: 'Authoritative, performance-oriented, science-aware, grounded, and devoid of cosmetic fluff',
-    approvedClaims: [
-      'Reinforces natural lipid barrier integrity',
-      'Instant cellular hydration with zero occlusive grease',
-      'Engineered for daily high-performance resilience',
-    ],
-    prohibitedClaims: [
-      'Unapproved medical or eczema treatment claims',
-      'Unverified numerical SPF protection ratings',
-      'Celebrity or physician endorsements not supplied by user',
-    ],
-    audience: 'Discerning daily skincare consumers demanding high-potency barrier repair without heavy sticky residue',
-    usageRightsAndNotes: 'Provisional typographic wordmark utilized pending final vector assets',
-  };
+      referenceUrls: input.referenceUrl ? [input.referenceUrl] : ['https://im8health.com/'],
+      paletteAndTypographyCues: isIm8
+        ? 'iM8 iconic crimson & obsidian (#8B1E24, #C23B38, #FAF7F2, #141414), high-contrast bold typography, clinical precision'
+        : 'Warm tactile earth tones (#2B1B17, #F9F6F0, #D4A373), high-contrast bold sans-serif headlines, clinical precision layout',
+      toneOfVoice: 'Authoritative, performance-oriented, science-aware, grounded, and devoid of cosmetic fluff',
+      approvedClaims: [
+        'Reinforces natural lipid barrier integrity',
+        'Instant cellular hydration with zero occlusive grease',
+        'Engineered for daily high-performance resilience',
+      ],
+      prohibitedClaims: [
+        'Unapproved medical or eczema treatment claims',
+        'Unverified numerical SPF protection ratings',
+        'Celebrity or physician endorsements not supplied by user',
+      ],
+      audience: 'Discerning daily skincare consumers demanding high-potency barrier repair without heavy sticky residue',
+      usageRightsAndNotes: 'Provisional typographic wordmark utilized pending final vector assets',
+    };
 
   const artifacts: Record<string, Artifact> = {};
   const artifactHistory: Artifact[] = [];
@@ -284,8 +292,8 @@ export async function executeCreativeRun(
     }),
   ]);
 
-  // 6. 5-Second Kling Turbo Video
-  await notify('Generating 5-second product motion video with Kling Turbo on fal...');
+  // 6. 10-Second Kling Turbo Video
+  await notify('Generating 10-second product motion video with Kling Turbo on fal...');
   const { artifact: videoArtifact, ugcSpec, blueprintTitle } = await generateKlingVideo({
     runId,
     threadId: input.threadId,
@@ -309,6 +317,7 @@ export async function executeCreativeRun(
     economics,
     ugcSpec,
     videoArtifact,
+    theme: isIm8 ? 'im8_crimson' : 'warm_earth',
   });
 
   const pptxPath = path.join(runDir, 'pitch-deck.pptx');
@@ -433,7 +442,12 @@ export async function executeRevision(
 
     const { runId, productIdentitySpec, posterVariants, recommendedVariantId, economics, signals, ugcSpec } = existingState;
     const lower = instruction.toLowerCase();
-
+    const isIm8 =
+      Boolean(existingState.brandContext?.referenceUrls?.some((u) => u.toLowerCase().includes('im8'))) ||
+      Boolean(existingState.brandContext?.paletteAndTypographyCues?.toLowerCase().includes('im8')) ||
+      Boolean(existingState.brandContext?.brandName?.toLowerCase().includes('im8')) ||
+      lower.includes('im8') ||
+      lower.includes('red');
 
   // Route 1: Poster Revision (e.g. "Make Poster B more retro")
   if (lower.includes('poster') || lower.includes('retro') || lower.includes('background') || lower.includes('headline')) {
@@ -444,12 +458,7 @@ export async function executeRevision(
     await notify(`Revising Poster ${targetVariant} with updated creative treatment ("${instruction}")...`);
 
     const prevPoster = existingState.assetPack[`poster_${targetVariant}`];
-    let revisedTreatment = 'Warm 1970s editorial retro aesthetic. Tactile raw timber surface, golden hour warm lens flare, nostalgic vintage film grain, warm cream and burnt amber tones.';
-    if (lower.includes('retro')) {
-      revisedTreatment = 'Warm 1970s editorial retro aesthetic. Tactile raw timber surface, golden hour warm lens flare, nostalgic vintage film grain, warm cream and burnt amber tones.';
-    } else {
-      revisedTreatment = `Modified creative treatment per user feedback: ${instruction}. Preserve locked product identity.`;
-    }
+    const revisedTreatment = `Apply revision: ${instruction}. Maintain identical container geometry and typography.`;
 
     const revisedPoster = await generateProductImage({
       runId,
@@ -490,6 +499,7 @@ export async function executeRevision(
       economics,
       ugcSpec,
       videoArtifact: existingState.assetPack['video'],
+      theme: isIm8 ? 'im8_crimson' : 'warm_earth',
     });
 
     const runDir = getRunDirectory(runId);
@@ -543,6 +553,7 @@ export async function executeRevision(
       economics: updatedEconomics,
       ugcSpec,
       videoArtifact: existingState.assetPack['video'],
+      theme: isIm8 ? 'im8_crimson' : 'warm_earth',
     });
 
     const runDir = getRunDirectory(runId);
@@ -621,6 +632,7 @@ export async function executeRevision(
       economics,
       ugcSpec: newUgcSpec,
       videoArtifact: revisedVideo,
+      theme: isIm8 ? 'im8_crimson' : 'warm_earth',
     });
 
     const runDir = getRunDirectory(runId);

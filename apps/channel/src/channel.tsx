@@ -49,7 +49,7 @@ export const channel = createChannel({
     {
       description: "Launch Room Creative Agent",
       value:
-        "You are the Launch Room CreativeAgent operator. When presented with a product launch request or ugly product photo, invoke 'run_creative_workflow'. When presented with an in-thread revision, invoke 'revise_creative_artifact'. When asked about blueprints, reference assets, templates, or capabilities, answer directly and concisely. You can also call 'list_video_blueprints'.",
+        "You are the Launch Room CreativeAgent operator. When presented with a product launch request or ugly product photo, invoke 'run_creative_workflow'. When presented with an in-thread revision, invoke 'revise_creative_artifact'. When asked about blueprints, reference assets, templates, or capabilities, answer directly and concisely. You can also call 'list_video_blueprints'. Once complete and files are uploaded, remain idle until the user speaks again.",
     },
     {
       description: "Available DTC Video Production Blueprints",
@@ -69,9 +69,57 @@ export const channel = createChannel({
   ],
 });
 
+// Active thread set to prevent concurrent or re-entrant execution loops
+const activeThreads = new Set<string>();
+
+/**
+ * Filter out non-human events, bot file shares, deleted/updated events,
+ * and empty payloads that cause Slack bot echo loops.
+ */
+function isActionableUserMessage(message: ChannelMessage): boolean {
+  // 1. Never respond to bots, apps, system events, or self
+  const actor = message.actor as any;
+  if (actor?.kind && actor.kind !== "human") {
+    console.log(`[channel] Skipping message from non-human actor kind='${actor.kind}' id='${actor.id || "unknown"}'`);
+    return false;
+  }
+  if ((message as any).user?.isBot || (message as any).bot_id) {
+    console.log(`[channel] Skipping bot message`);
+    return false;
+  }
+
+  // 2. Only respond to newly created messages (ignore message_changed, unfurls, deletes)
+  if (message.operation && message.operation.kind !== "created") {
+    console.log(`[channel] Skipping non-created operation: ${message.operation.kind}`);
+    return false;
+  }
+
+  // 3. Must have meaningful text or attached media parts
+  const hasText = Boolean(message.text?.trim());
+  const hasParts = Boolean(message.contentParts && message.contentParts.length > 0);
+  if (!hasText && !hasParts) {
+    console.log(`[channel] Skipping empty message without text or media parts`);
+    return false;
+  }
+
+  return true;
+}
+
 // A mention subscribes the conversation, so the agent then follows along instead
 // of needing to be @-mentioned every single turn.
 async function runCreativeTurn(thread: StatefulThread<unknown>, message: ChannelMessage) {
+  if (!isActionableUserMessage(message)) {
+    return;
+  }
+
+  const threadKey = (thread as any).conversationKey || (thread as any).id || "default-thread";
+  if (activeThreads.has(threadKey)) {
+    console.warn(`[channel] Thread ${threadKey} is already executing a creative run. Ignoring re-entrant event.`);
+    return;
+  }
+
+  activeThreads.add(threadKey);
+
   const prompt = message.contentParts?.length
     ? [
         ...(message.text ? [{ type: "text" as const, text: message.text }] : []),
@@ -95,6 +143,8 @@ async function runCreativeTurn(thread: StatefulThread<unknown>, message: Channel
     } catch {
       // ignore notification failure
     }
+  } finally {
+    activeThreads.delete(threadKey);
   }
 }
 
