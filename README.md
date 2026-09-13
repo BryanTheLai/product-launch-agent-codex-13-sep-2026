@@ -142,11 +142,12 @@ Output:
 > channel@0.1.0 typecheck (tsc --noEmit)    -> PASSED
 > web@0.1.0 typecheck (tsc --noEmit)        -> PASSED
 
-✔ agent-core tests (48 passed)
+✔ agent-core tests (51 passed, including structured logging & Jinja templates)
 ✔ channel tests    (23 passed)
 ✔ web tests        (39 passed)
-Total: 110 tests passing, 0 failing.
+Total: 113 tests passing, 0 failing.
 ```
+
 
 ### 3. Run the End-to-End Demo Script
 

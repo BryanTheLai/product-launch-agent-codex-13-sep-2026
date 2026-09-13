@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from '../../logger';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -166,7 +167,13 @@ export function renderTemplate(templateRelPath: string, context: Record<string, 
   if (!templateContent) {
     const fullPath = path.join(getTemplatesDirectory(), normPath);
     if (!fs.existsSync(fullPath)) {
-      throw new Error(`Jinja template not found at: ${fullPath} (searched templates dir: ${getTemplatesDirectory()})`);
+      const err = new Error(`Jinja template not found at: ${fullPath} (searched templates dir: ${getTemplatesDirectory()})`);
+      logger.error('Failed to load Jinja template file', err, {
+        templateRelPath: normPath,
+        resolvedPath: fullPath,
+        templatesDirectory: getTemplatesDirectory(),
+      });
+      throw err;
     }
     templateContent = fs.readFileSync(fullPath, 'utf8');
     templateCache.set(normPath, templateContent);
@@ -174,6 +181,7 @@ export function renderTemplate(templateRelPath: string, context: Record<string, 
 
   return renderString(templateContent, context).trim();
 }
+
 
 /**
  * Clear memory cache of loaded templates (useful for unit tests or hot reload).

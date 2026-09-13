@@ -18,6 +18,7 @@ export interface GenerateImageOptions {
 }
 
 import { renderTemplate } from '../templates/engine';
+import { logger } from '../../logger';
 
 export function buildFivePartPrompt(options: {
   productSpec: ProductIdentitySpec;
@@ -30,9 +31,24 @@ export function buildFivePartPrompt(options: {
 }
 
 export async function generateProductImage(options: GenerateImageOptions): Promise<Artifact> {
+  const log = logger.child(
+    {
+      provider: 'openai',
+      runId: options.runId,
+      threadId: options.threadId,
+      kind: options.kind,
+      variantId: options.variantId || null,
+      outputFile: options.outputFileName,
+    },
+    'openai-images'
+  );
+
+  const startTime = Date.now();
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not configured in the environment.');
+    const err = new Error('OPENAI_API_KEY is not configured in the environment.');
+    log.error('Cannot generate product image: missing OPENAI_API_KEY', err);
+    throw err;
   }
 
   const model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare-2026-09-08';
@@ -46,6 +62,11 @@ export async function generateProductImage(options: GenerateImageOptions): Promi
 
   const artifactId = generateId(`art-${options.kind}`);
   const createdAt = new Date().toISOString();
+
+  log.info(`Generating product image (${options.kind})`, {
+    model,
+    promptSnippet: prompt.slice(0, 120) + '...',
+  });
 
   try {
     const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -73,6 +94,10 @@ export async function generateProductImage(options: GenerateImageOptions): Promi
       } catch {
         // use raw text
       }
+      log.error(`OpenAI Image generation failed with status ${response.status}`, new Error(errorMsg), {
+        status: response.status,
+        durationMs: Date.now() - startTime,
+      });
       return {
         id: artifactId,
         runId: options.runId,
@@ -110,6 +135,12 @@ export async function generateProductImage(options: GenerateImageOptions): Promi
     }
 
     const localPath = await saveFileArtifact(options.runId, options.outputFileName, imageBuffer);
+    const durationMs = Date.now() - startTime;
+    log.info(`Successfully generated and saved ${options.kind} image`, {
+      localPath,
+      durationMs,
+      fileSizeKb: Math.round(imageBuffer.length / 1024),
+    });
 
     return {
       id: artifactId,
@@ -128,6 +159,8 @@ export async function generateProductImage(options: GenerateImageOptions): Promi
       status: 'completed',
     };
   } catch (error: any) {
+    const durationMs = Date.now() - startTime;
+    log.error(`Exception during ${options.kind} generation`, error, { durationMs });
     return {
       id: artifactId,
       runId: options.runId,

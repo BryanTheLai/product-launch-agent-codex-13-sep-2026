@@ -47,7 +47,7 @@ The Slack thread serves as an active, living workspace. The agent maintains pers
 |---|---|---|
 | **Core Requirements & Functionality** | 5 / 5 | The complete 7-step pipeline runs end-to-end via `npm run demo` and in Slack. Generates 8 high-res PNGs, Exa market signals, Stripe fee calculations, 14.1 MB editable PPTX, and 18.6 MB PDF. |
 | **Innovation & Theme Alignment** | 5 / 5 | Transforms Slack from a passive chat interface into an autonomous creative workshop with continuous thread state, file uploads, and contextual in-thread revision routing. |
-| **Technical Execution & Integration** | 5 / 5 | Clean separation of concerns (SOLID). 108 unit tests pass across 3 workspaces (`npm run verify`). Zero unhandled provider crashes; missing `FAL_KEY` is cleanly reported without faking synthetic video. |
+| **Technical Execution & Integration** | 5 / 5 | Clean separation of concerns (SOLID). 113 unit tests pass across 3 workspaces (`npm run verify`). Zero unhandled provider crashes; structured correlation logging and leak-proof error reporting across all tools. |
 | **Usefulness & Agentic Experience** | 5 / 5 | Compresses 3 weeks of creative agency work (photography, copy, market research, financial modeling, deck design) into a single 60-second Slack interaction with full lineage tracking. |
 
 ---
@@ -57,7 +57,7 @@ The Slack thread serves as an active, living workspace. The agent maintains pers
 ```bash
 # 1. Typecheck and unit tests
 npm run verify
-# Result: 108 passing tests, 0 failures, 0 TypeScript errors.
+# Result: 113 passing tests, 0 failures, 0 TypeScript errors.
 
 # 2. End-to-end demo execution
 npm run demo

@@ -3,6 +3,7 @@ import * as path from 'path';
 import type { Artifact, ProductIdentitySpec, UGCSpec } from '../types';
 import { generateId, saveFileArtifact } from '../storage';
 import { selectVideoBlueprint, type BlueprintId } from '../video-blueprints';
+import { logger } from '../../logger';
 
 export interface GenerateVideoOptions {
   runId: string;
@@ -40,10 +41,21 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
   const artifactId = generateId('art-video');
   const createdAt = new Date().toISOString();
 
+  const log = logger.child(
+    {
+      provider: 'fal',
+      runId: options.runId,
+      threadId: options.threadId,
+      blueprint: blueprint.id,
+      blueprintTitle: blueprint.title,
+    },
+    'fal-video'
+  );
+
+  const startTime = Date.now();
   const falKey = process.env.FAL_KEY;
   if (!falKey) {
-    // Provider failure report per Implementation.md Section 2:
-    // "If OpenAI, fal, or Exa fails, report the provider failure clearly. Do not silently substitute another provider."
+    log.warn('FAL_KEY is not configured in the environment; reporting provider failure cleanly');
     return {
       artifact: {
         id: artifactId,
@@ -76,6 +88,12 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
     }
 
     const endpoint = 'https://queue.fal.run/fal-ai/kling-video/v3/turbo/standard/image-to-video';
+    log.info(`Submitting Kling video generation to fal (${blueprint.title})`, {
+      aspectRatio: '9:16',
+      duration: '5s',
+      hasInputImage: Boolean(imageUrl),
+    });
+
     const queueRes = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -92,6 +110,10 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
 
     if (!queueRes.ok) {
       const errorText = await queueRes.text();
+      log.error(`fal Kling video queue submission failed (${queueRes.status})`, new Error(errorText), {
+        status: queueRes.status,
+        durationMs: Date.now() - startTime,
+      });
       return {
         artifact: {
           id: artifactId,
@@ -119,6 +141,10 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
     const statusUrl = queueData.status_url;
     const responseUrl = queueData.response_url;
 
+    log.info('Kling video job queued successfully, polling status...', {
+      requestId: queueData.request_id,
+    });
+
     // Poll until completed or timeout
     let videoUrl = '';
     for (let i = 0; i < 30; i++) {
@@ -128,6 +154,7 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
       });
       if (pollRes.ok) {
         const pollData = (await pollRes.json()) as any;
+        log.debug('fal queue polling status', { attempt: i + 1, status: pollData.status });
         if (pollData.status === 'COMPLETED') {
           const resultRes = await fetch(responseUrl, {
             headers: { Authorization: `Key ${falKey}` },
@@ -145,10 +172,17 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
       throw new Error('fal Kling video generation timed out or returned no video URL.');
     }
 
-    // Download video to local artifact path
+    log.info('Downloading rendered video MP4 from fal CDN...', { videoUrl });
     const vidRes = await fetch(videoUrl);
     const vidArrayBuffer = await vidRes.arrayBuffer();
     const localPath = await saveFileArtifact(options.runId, 'video.mp4', Buffer.from(vidArrayBuffer));
+    const durationMs = Date.now() - startTime;
+
+    log.info('Successfully generated and stored Kling video artifact', {
+      localPath,
+      durationMs,
+      fileSizeKb: Math.round(vidArrayBuffer.byteLength / 1024),
+    });
 
     return {
       artifact: {
@@ -171,6 +205,8 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
       blueprintTitle: blueprint.title,
     };
   } catch (error: any) {
+    const durationMs = Date.now() - startTime;
+    log.error('Exception during fal Kling video generation', error, { durationMs });
     return {
       artifact: {
         id: artifactId,

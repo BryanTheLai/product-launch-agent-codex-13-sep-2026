@@ -1,5 +1,8 @@
 import Exa from 'exa-js';
 import type { CommercialSignal, EconomicsResearch, EvidenceLabel } from '../types';
+import { logger } from '../../logger';
+
+const log = logger.child({ provider: 'exa' }, 'exa-research');
 
 function getExaClient(): Exa {
   const apiKey = process.env.EXA_API_KEY;
@@ -14,6 +17,8 @@ export async function searchMarketSignals(
   brandName = 'Stackifier',
   targetAudience = 'performance-oriented skincare consumers'
 ): Promise<CommercialSignal[]> {
+  const startTime = Date.now();
+  log.info('Executing live Exa market signals search', { productCategory, brandName });
   const exa = getExaClient();
 
   try {
@@ -71,8 +76,16 @@ export async function searchMarketSignals(
       confidence: 0.88,
     });
 
+    log.info('Retrieved and parsed market signals from Exa', {
+      signalsCount: signals.length,
+      durationMs: Date.now() - startTime,
+    });
+
     return signals;
   } catch (err: any) {
+    log.warn(`Exa search unavailable or rate-limited; utilizing verified baseline market signals: ${err?.message || err}`, {
+      durationMs: Date.now() - startTime,
+    });
     // Graceful fallback with documented real sources per Implementation.md
     return [
       {

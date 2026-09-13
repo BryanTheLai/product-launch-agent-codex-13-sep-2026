@@ -26,6 +26,7 @@ import { researchUnitEconomics, searchMarketSignals } from './providers/exa-rese
 import { generateKlingVideo } from './providers/fal-video';
 import { buildDeckSpec, exportDeckToPdf, exportDeckToPptx } from './deck/presentation';
 import { renderTemplate } from './templates/engine';
+import { logger } from '../logger';
 
 export interface CreativeDirectorCallbacks {
   onProgress?: (message: string) => Promise<void> | void;
@@ -40,24 +41,46 @@ export async function executeCreativeRun(
   pptxPath: string;
   pdfPath: string;
 }> {
+  const { runId, runDir } = initRun(input.threadId);
+  const log = logger.child(
+    {
+      runId,
+      threadId: input.threadId,
+      brandName: input.brandName,
+      category: input.productType,
+    },
+    'creative-director'
+  );
+
+  const runStartTime = Date.now();
+  log.info('Beginning autonomous launch pack execution', {
+    briefSnippet: input.rawText.slice(0, 100) + '...',
+  });
+
   const notify = async (msg: string) => {
+    log.debug(`Progress milestone: ${msg}`);
     if (callbacks.onProgress) {
       await callbacks.onProgress(msg);
     }
   };
 
-  await notify('1/7 Initializing creative run and resolving brand brief...');
-  const { runId, runDir } = initRun(input.threadId);
+  try {
+    await notify('1/7 Initializing creative run and resolving brand brief...');
 
-  // 1. Lock Product Identity Spec
-  await notify('2/7 Locking canonical ProductIdentitySpec and packaging invariants...');
-  const productSpec = createProductIdentitySpec(input, 'v1');
-  await saveProductSpec(runId, productSpec);
+    // 1. Lock Product Identity Spec
+    await notify('2/7 Locking canonical ProductIdentitySpec and packaging invariants...');
+    const productSpec = createProductIdentitySpec(input, 'v1');
+    await saveProductSpec(runId, productSpec);
+    log.info('Locked ProductIdentitySpec', {
+      productType: productSpec.productType,
+      formFactor: productSpec.formFactor,
+      material: productSpec.containerMaterialAndFinish,
+    });
 
-  const brandContext: BrandContext = {
-    brandName: input.brandName || 'Stackifier',
-    logoAsset: 'provisional',
-    watermarkAsset: 'none',
+    const brandContext: BrandContext = {
+      brandName: input.brandName || 'Stackifier',
+      logoAsset: 'provisional',
+      watermarkAsset: 'none',
     referenceUrls: input.referenceUrl ? [input.referenceUrl] : ['https://im8health.com/'],
     paletteAndTypographyCues: 'Warm tactile earth tones (#2B1B17, #F9F6F0, #D4A373), high-contrast bold sans-serif headlines, clinical precision layout',
     toneOfVoice: 'Authoritative, performance-oriented, science-aware, grounded, and devoid of cosmetic fluff',
@@ -359,12 +382,24 @@ export async function executeCreativeRun(
   await saveThreadState(threadState);
   await notify('✓ Creative pack and pitch deck completed successfully.');
 
+  const totalDurationMs = Date.now() - runStartTime;
+  log.info('Autonomous launch pack execution completed successfully', {
+    durationMs: totalDurationMs,
+    artifactsCount: Object.keys(artifacts).length,
+    videoStatus: videoArtifact.status,
+  });
+
   return {
     threadState,
     artifacts,
     pptxPath,
     pdfPath,
   };
+} catch (error: any) {
+  const totalDurationMs = Date.now() - runStartTime;
+  log.error('Creative run execution failed', error, { durationMs: totalDurationMs });
+  throw error;
+}
 }
 
 export async function executeRevision(
@@ -377,19 +412,28 @@ export async function executeRevision(
   pptxPath: string;
   pdfPath: string;
 }> {
+  const revStartTime = Date.now();
+  const log = logger.child({ threadId, instruction }, 'creative-director-revision');
+  log.info('Beginning creative artifact revision', { instruction });
+
   const notify = async (msg: string) => {
+    log.debug(`Revision milestone: ${msg}`);
     if (callbacks.onProgress) {
       await callbacks.onProgress(msg);
     }
   };
 
-  const existingState = await loadThreadState(threadId);
-  if (!existingState) {
-    throw new Error(`No existing thread state found for threadId: ${threadId}`);
-  }
+  try {
+    const existingState = await loadThreadState(threadId);
+    if (!existingState) {
+      const err = new Error(`No existing thread state found for threadId: ${threadId}`);
+      log.error('Cannot execute revision: missing thread state', err);
+      throw err;
+    }
 
-  const { runId, productIdentitySpec, posterVariants, recommendedVariantId, economics, signals, ugcSpec } = existingState;
-  const lower = instruction.toLowerCase();
+    const { runId, productIdentitySpec, posterVariants, recommendedVariantId, economics, signals, ugcSpec } = existingState;
+    const lower = instruction.toLowerCase();
+
 
   // Route 1: Poster Revision (e.g. "Make Poster B more retro")
   if (lower.includes('poster') || lower.includes('retro') || lower.includes('background') || lower.includes('headline')) {
@@ -604,10 +648,16 @@ export async function executeRevision(
   // Default fallback revision
   await notify(`Applying revision: ${instruction}...`);
   const runDir = getRunDirectory(runId);
+  log.info('Revision completed successfully', { durationMs: Date.now() - revStartTime });
   return {
     threadState: existingState,
     updatedArtifact: existingState.assetPack['product_master']!,
     pptxPath: path.join(runDir, 'pitch-deck.pptx'),
     pdfPath: path.join(runDir, 'pitch-deck.pdf'),
   };
+} catch (error: any) {
+  const durationMs = Date.now() - revStartTime;
+  log.error('Creative artifact revision failed', error, { durationMs });
+  throw error;
+}
 }

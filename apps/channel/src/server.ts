@@ -6,8 +6,21 @@
 import { createServer } from "node:http";
 import { CopilotKitIntelligence, CopilotRuntime } from "@copilotkit/runtime/v2";
 import { createCopilotNodeListener } from "@copilotkit/runtime/v2/node";
+import { logger } from "agent-core";
 import { channel } from "./channel";
 import { required } from "./env";
+
+const log = logger.child({ component: "channel-server" });
+
+process.on("uncaughtException", (err) => {
+  log.error("Fatal uncaughtException in channel server process", err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const errorObj = reason instanceof Error ? reason : new Error(String(reason));
+  log.error("Unhandled promise rejection in channel server process", errorObj);
+});
 
 const intelligence = new CopilotKitIntelligence({
   apiKey: required("INTELLIGENCE_API_KEY", "CPK_INTELLIGENCE_API_KEY"),
@@ -25,6 +38,7 @@ const runtime = new CopilotRuntime({
 
 let teardown: (() => Promise<void>) | undefined;
 const shutdown = async () => {
+  log.info("Shutdown signal received, tearing down channels and server...");
   await teardown?.();
   process.exit(0);
 };
@@ -40,6 +54,7 @@ teardown = async () => {
   if (server.listening) server.close();
 };
 
+log.info("Waiting for CopilotKit Channels gateway handshake...");
 await channels.ready({ timeoutMs: 30_000 });
 
 // `ready()` is NOT proof of life — it resolves on `setup_required` too, because
@@ -48,17 +63,20 @@ await channels.ready({ timeoutMs: 30_000 });
 // nothing.
 const status = channels.status();
 if (status.overall !== "online") {
-  console.error(
-    `\n  Channel is not online: ${JSON.stringify(status)}\n` +
-      `  → 'setup_required' means the provider side is unfinished. Run: npm run channel:status\n` +
-      `  → See dev-docs/troubleshooting.md\n`,
-  );
+  log.error(`Channel is not online: ${JSON.stringify(status)}`, new Error("ChannelOfflineError"), {
+    status,
+    help: "Run: npm run channel:status or review dev-docs/troubleshooting.md",
+  });
   await teardown();
   process.exit(1);
 }
 
 const port = Number(process.env.PORT ?? 3000);
 server.listen(port, () => {
+  log.info(`Channel "${process.env.CHANNEL_CODE}" online and connected to CopilotKit gateway`, {
+    port,
+    channelCode: process.env.CHANNEL_CODE,
+  });
   console.log(`\n  ✓ Channel "${process.env.CHANNEL_CODE}" online — listening on :${port}`);
   console.log(`    Invite the bot to a channel (/invite @yourbot), then @-mention it.\n`);
 });
