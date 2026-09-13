@@ -51,7 +51,7 @@ export async function generateProductImage(options: GenerateImageOptions): Promi
     throw err;
   }
 
-  const model = process.env.OPENAI_IMAGE_MODEL || 'dall-e-3';
+  const model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2.5-flare-2026-09-08';
   const prompt = buildFivePartPrompt({
     productSpec: options.productSpec,
     creativeTreatment: options.creativeTreatment,
