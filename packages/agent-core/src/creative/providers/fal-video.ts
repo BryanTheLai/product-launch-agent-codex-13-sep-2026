@@ -87,9 +87,11 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
       imageUrl = `data:image/png;base64,${imgBuffer.toString('base64')}`;
     }
 
-    const endpoint = 'https://queue.fal.run/fal-ai/kling-video/v3/turbo/standard/image-to-video';
+    const providerModel = process.env.FAL_VIDEO_MODEL || 'fal-ai/kling-video/v3/turbo/standard/image-to-video';
+    const endpoint = `https://queue.fal.run/${providerModel}`;
     const videoDuration = options.durationMode === 'five_second_single_clip' || options.durationMode === '5' ? '5' : '10';
     log.info(`Submitting Kling video generation to fal (${blueprint.title})`, {
+      model: providerModel,
       aspectRatio: '9:16',
       duration: `${videoDuration}s`,
       hasInputImage: Boolean(imageUrl),
@@ -128,7 +130,7 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
           productIdentityVersion: options.productSpec.productIdentityVersion,
           prompt,
           provider: 'fal',
-          providerModel: 'fal-ai/kling-video/v3/turbo/standard/image-to-video',
+          providerModel,
           createdAt,
           status: 'failed',
           error: `fal Kling video API error (${queueRes.status}): ${errorText}`,
@@ -198,7 +200,7 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
         productIdentityVersion: options.productSpec.productIdentityVersion,
         prompt,
         provider: 'fal',
-        providerModel: 'fal-ai/kling-video/v3/turbo/standard/image-to-video',
+        providerModel,
         createdAt,
         status: 'completed',
       },
@@ -221,7 +223,7 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
         productIdentityVersion: options.productSpec.productIdentityVersion,
         prompt,
         provider: 'fal',
-        providerModel: 'fal-ai/kling-video/v3/turbo/standard/image-to-video',
+        providerModel,
         createdAt,
         status: 'failed',
         error: error?.message || String(error),
