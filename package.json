@@ -22,7 +22,8 @@
     "dev:web": "npm run dev --workspace web",
     "test": "npm run test --workspaces --if-present",
     "verify": "npm run typecheck && npm test",
-    "demo": "node --env-file=.env --import tsx scripts/demo.ts"
+    "demo": "node --env-file=.env --import tsx scripts/demo.ts",
+    "postinstall": "node scripts/patch-channels.cjs"
   },
   "overrides": {
     "@ag-ui/client": "0.0.59"
