@@ -54,6 +54,7 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
 
   const startTime = Date.now();
   const falKey = process.env.FAL_KEY;
+  const providerModel = process.env.FAL_VIDEO_MODEL || 'fal-ai/kling-video/v3/turbo/standard/image-to-video';
   if (!falKey) {
     log.warn('FAL_KEY is not configured in the environment; reporting provider failure cleanly');
     return {
@@ -69,7 +70,7 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
         productIdentityVersion: options.productSpec.productIdentityVersion,
         prompt,
         provider: 'fal',
-        providerModel: 'fal-ai/kling-video/v3/turbo/standard/image-to-video',
+        providerModel,
         createdAt,
         status: 'failed',
         error: 'FAL_KEY is not configured in the environment. Set FAL_KEY to enable Kling Turbo video rendering.',
@@ -87,7 +88,6 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
       imageUrl = `data:image/png;base64,${imgBuffer.toString('base64')}`;
     }
 
-    const providerModel = process.env.FAL_VIDEO_MODEL || 'fal-ai/kling-video/v3/turbo/standard/image-to-video';
     const endpoint = `https://queue.fal.run/${providerModel}`;
     const videoDuration = options.durationMode === 'five_second_single_clip' || options.durationMode === '5' ? '5' : '10';
     log.info(`Submitting Kling video generation to fal (${blueprint.title})`, {
@@ -148,16 +148,18 @@ export async function generateKlingVideo(options: GenerateVideoOptions): Promise
       requestId: queueData.request_id,
     });
 
-    // Poll until completed or timeout (up to 50 iterations * 3s = 150s for 10s video)
+    // Poll until completed or timeout (up to 80 iterations * 3s = 240s for 10s video)
     let videoUrl = '';
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 80; i++) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       const pollRes = await fetch(statusUrl, {
         headers: { Authorization: `Key ${falKey}` },
       });
       if (pollRes.ok) {
         const pollData = (await pollRes.json()) as any;
-        log.debug('fal queue polling status', { attempt: i + 1, status: pollData.status });
+        if ((i + 1) % 5 === 0 || pollData.status === 'COMPLETED' || pollData.status === 'FAILED') {
+          log.info('fal queue polling status', { attempt: i + 1, maxAttempts: 80, status: pollData.status });
+        }
         if (pollData.status === 'COMPLETED') {
           const resultRes = await fetch(responseUrl, {
             headers: { Authorization: `Key ${falKey}` },

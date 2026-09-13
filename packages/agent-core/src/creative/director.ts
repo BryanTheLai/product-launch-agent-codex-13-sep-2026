@@ -294,14 +294,43 @@ export async function executeCreativeRun(
 
   // 6. 10-Second Kling Turbo Video
   await notify('Generating 10-second product motion video with Kling Turbo on fal...');
-  const { artifact: videoArtifact, ugcSpec, blueprintTitle } = await generateKlingVideo({
-    runId,
-    threadId: input.threadId,
-    sourcePosterArtifact: artifacts[`poster_${recommendedVariantId}`]!,
-    productSpec,
-    briefText: input.rawText,
-    brandName: brandContext.brandName,
-  });
+  let videoArtifact: Artifact;
+  let ugcSpec: any = undefined;
+  let blueprintTitle = 'Skin Precision Dispense';
+
+  try {
+    const res = await generateKlingVideo({
+      runId,
+      threadId: input.threadId,
+      sourcePosterArtifact: artifacts[`poster_${recommendedVariantId}`]!,
+      productSpec,
+      briefText: input.rawText,
+      brandName: brandContext.brandName,
+    });
+    videoArtifact = res.artifact;
+    ugcSpec = res.ugcSpec;
+    blueprintTitle = res.blueprintTitle;
+  } catch (videoErr: any) {
+    log.error('generateKlingVideo unhandled error; falling back gracefully', videoErr);
+    videoArtifact = {
+      id: generateId('art-video'),
+      runId,
+      threadId: input.threadId,
+      kind: 'video',
+      variantId: null,
+      localPath: '',
+      parentArtifactId: artifacts[`poster_${recommendedVariantId}`]!.id,
+      sourceProductArtifactId: productMaster.id,
+      productIdentityVersion: productSpec.productIdentityVersion,
+      prompt: '10-second Kling Turbo motion video',
+      provider: 'fal',
+      providerModel: process.env.FAL_VIDEO_MODEL || 'fal-ai/kling-video/v3/turbo/standard/image-to-video',
+      createdAt: new Date().toISOString(),
+      status: 'failed',
+      error: videoErr?.message || String(videoErr),
+    };
+  }
+
   artifacts['video'] = videoArtifact;
   artifactHistory.push(videoArtifact);
 
